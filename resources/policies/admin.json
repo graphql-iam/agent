@@ -1,0 +1,12 @@
+{
+  "id": "01f6a071-0c80-4935-8f66-af446754c4ff",
+  "version": "2024-08-08",
+  "name": "admin",
+  "statements": [
+    {
+      "effect": "allow",
+      "action": "*",
+      "resource": "**"
+    }
+  ]
+}

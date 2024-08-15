@@ -1,0 +1,17 @@
+{
+  "id": "5eb71254-a746-4cd2-ae7a-5d0e3b396bc5",
+  "version": "2024-08-08",
+  "name": "Allow all except books id",
+  "statements": [
+    {
+      "effect": "allow",
+      "action": "query",
+      "resource": "**"
+    },
+    {
+      "effect": "deny",
+      "action": "query",
+      "resource": "__schema**"
+    }
+  ]
+}

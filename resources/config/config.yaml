@@ -1,0 +1,21 @@
+path: /graphql
+port: 8080
+sourceUrl: http://localhost:4000/graphql
+mongoUrl: mongodb://localhost:27017
+auth:
+  mode: header
+  headerOptions:
+    name: X-Roles
+#  mode: jwt
+#  jwtOptions:
+#    signingMethod: RS256
+#    key: '
+#    {
+#    "kty": "RSA",
+#    "e": "AQAB",
+#    "use": "sig",
+#    "alg": "RS256",
+#    "n": "pxU_kLqaPnEGbTwOdvdidAgHeJtav33KG-Gus9vMS-fJ9H4B2h6rrScNrFmU0F5mqqVLN60UhDreTmwSNyPbL_hFjq4qykIRxgKiJ6_H_HG-6ft16o5miICD_UgALSW7d1WYgv3qaieQCZdC30ZrYNB6CGkW__U-fB6n6oQF4NHUtUYbj1CLcN_m8SWV6IirpBfoPuTPJDG4cX6v38VUphCdpM0-PQmMVNNUhkpgoihstuQghlZymiMISI-E0R44mCH-joLuEllvqwVdCTeqgTbzkFQLXIw3bRpQlKwNsIInAiaotoZ1sgh1AiPYMNmqvu7NTiiRuq29EN23OtaZIQ"
+#}
+#    '
+#    roleClaim: roles

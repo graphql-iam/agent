@@ -1,0 +1,17 @@
+{
+  "id": "b4ceb322-f85c-4d0c-b302-ada887071dc2",
+  "version": "2024-08-08",
+  "name": "Allow all except books id",
+  "statements": [
+    {
+      "effect": "allow",
+      "action": "query",
+      "resource": "AppController_books.**"
+    },
+    {
+      "effect": "deny",
+      "action": "query",
+      "resource": "AppController_books.id"
+    }
+  ]
+}
