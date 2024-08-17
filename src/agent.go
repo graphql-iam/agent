@@ -5,20 +5,29 @@ import (
 	"fmt"
 	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
-	"github.com/lars250698/graphql-iam/src/config"
-	"github.com/lars250698/graphql-iam/src/handler"
-	"github.com/lars250698/graphql-iam/src/logic"
-	"github.com/lars250698/graphql-iam/src/repository"
+	"github.com/graphql-iam/agent/src/config"
+	"github.com/graphql-iam/agent/src/handler"
+	"github.com/graphql-iam/agent/src/logic"
+	"github.com/graphql-iam/agent/src/repository"
 	"github.com/patrickmn/go-cache"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"log"
+	"os"
 	"time"
 )
 
+const ConfigPathEnvName = "AGENT_CONFIG_PATH"
+
 func main() {
-	cfg, err := config.GetConfig("./resources/config/config.yaml")
+	configPath := "./config.yaml"
+
+	if os.Getenv(ConfigPathEnvName) != "" {
+		configPath = os.Getenv(ConfigPathEnvName)
+	}
+
+	cfg, err := config.GetConfig(configPath)
 	if err != nil {
 		panic(err)
 	}
@@ -64,7 +73,7 @@ func main() {
 	c := cache.New(expire, purge)
 
 	rolesRepository := repository.RolesRepository{
-		DB:    db,
+		Cfg:   cfg,
 		Cache: c,
 	}
 
@@ -79,19 +88,14 @@ func main() {
 		policyProxy.KeySet = &set
 	}
 
-	policyEvaluator := handler.PolicyEvaluator{
-		DB:  db,
-		Cfg: cfg,
-	}
-
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
-		AllowOrigins: []string{"*"},
-		AllowMethods: []string{"POST"},
-		AllowHeaders: []string{"*"},
+		AllowOrigins: cfg.CorsOptions.AllowOrigins,
+		AllowMethods: cfg.CorsOptions.AllowMethods,
+		AllowHeaders: cfg.CorsOptions.AllowHeaders,
 	}))
 	r.POST(cfg.Path, policyProxy.Handler)
-	r.POST("/auth/role", policyEvaluator.Handler)
+	r.GET("/ping", handler.Ping)
 
 	err = r.Run(fmt.Sprintf("localhost:%d", cfg.Port))
 	if err != nil {

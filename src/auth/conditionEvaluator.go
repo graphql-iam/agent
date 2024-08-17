@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"github.com/araddon/dateparse"
 	"github.com/gobwas/glob"
-	"github.com/lars250698/graphql-iam/src/model"
+	"github.com/graphql-iam/agent/src/model"
 	"net"
 	"net/http"
 	"strconv"

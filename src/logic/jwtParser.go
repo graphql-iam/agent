@@ -3,7 +3,7 @@ package logic
 import (
 	"errors"
 	"fmt"
-	"github.com/lars250698/graphql-iam/src/config"
+	"github.com/graphql-iam/agent/src/config"
 	"github.com/lestrrat-go/jwx/v2/jwa"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"github.com/lestrrat-go/jwx/v2/jwt"

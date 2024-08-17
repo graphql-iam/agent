@@ -8,7 +8,3 @@ func FilterArray[T any](ss []T, test func(T) bool) (ret []T) {
 	}
 	return
 }
-
-func RemoveFromArray[T any](ss []T, idx int) []T {
-	return append(ss[:idx], ss[idx+1:]...)
-}

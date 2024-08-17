@@ -1,4 +1,4 @@
-module github.com/lars250698/graphql-iam
+module github.com/graphql-iam/agent
 
 go 1.22.5
 

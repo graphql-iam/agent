@@ -3,8 +3,8 @@ package auth
 import (
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/lars250698/graphql-iam/src/config"
-	"github.com/lars250698/graphql-iam/src/logic"
+	"github.com/graphql-iam/agent/src/config"
+	"github.com/graphql-iam/agent/src/logic"
 	"github.com/lestrrat-go/jwx/v2/jwk"
 	"strings"
 )

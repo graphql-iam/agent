@@ -1,7 +1,16 @@
 path: /graphql
 port: 8080
+managerUrl: http://localhost:8081
 sourceUrl: http://localhost:4000/graphql
 mongoUrl: mongodb://localhost:27017
+corsOptions:
+  allowOrigins:
+    - '*'
+  allowMethods:
+    - POST
+    - GET
+  allowHeaders:
+    - '*'
 auth:
   mode: header
   headerOptions:

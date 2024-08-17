@@ -1,19 +1,18 @@
 package repository
 
 import (
-	"context"
-	"errors"
-	"fmt"
-	"github.com/lars250698/graphql-iam/src/model"
-	"github.com/lars250698/graphql-iam/src/util"
+	"encoding/json"
+	"github.com/graphql-iam/agent/src/config"
+	"github.com/graphql-iam/agent/src/model"
+	"github.com/graphql-iam/agent/src/util"
 	"github.com/patrickmn/go-cache"
-	"go.mongodb.org/mongo-driver/bson"
-	"go.mongodb.org/mongo-driver/mongo"
+	"net/http"
+	"strings"
 	"time"
 )
 
 type RolesRepository struct {
-	DB    *mongo.Database
+	Cfg   config.Config
 	Cache *cache.Cache
 }
 
@@ -23,17 +22,35 @@ func (r *RolesRepository) GetRoleByName(name string) (model.Role, error) {
 		return res.(model.Role), nil
 	}
 
-	var result model.Role
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	err := r.DB.Collection("rolesWithPolicies").FindOne(ctx, bson.D{{"name", name}}).Decode(&result)
+	result, err := r.getRoleByNameFromManager(name)
 	if err != nil {
-		fmt.Println(err.Error())
-		return result, errors.New(fmt.Sprintf("could not find role with name %s", name))
+		return model.Role{}, err
 	}
 
 	r.Cache.Set(name, result, cache.DefaultExpiration)
 	return result, nil
+}
+
+func (r *RolesRepository) getRoleByNameFromManager(name string) (model.Role, error) {
+	req, err := http.NewRequest("GET", r.Cfg.ManagerUrl+"/role", nil)
+	if err != nil {
+		return model.Role{}, err
+	}
+	q := req.URL.Query()
+	q.Add("role", name)
+	req.URL.RawQuery = q.Encode()
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		return model.Role{}, err
+	}
+	var role model.Role
+	err = json.NewDecoder(res.Body).Decode(&role)
+	if err != nil {
+		return model.Role{}, err
+	}
+	return role, nil
 }
 
 func (r *RolesRepository) GetRolesByNames(names []string) ([]model.Role, error) {
@@ -53,15 +70,7 @@ func (r *RolesRepository) GetRolesByNames(names []string) ([]model.Role, error) 
 		return cacheResult, nil
 	}
 
-	var queryResult []model.Role
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	cur, err := r.DB.Collection("rolesWithPolicies").Find(ctx, bson.D{{"name", bson.D{{"$in", unresolvedNames}}}})
-	if err != nil {
-		return nil, err
-	}
-
-	err = cur.All(ctx, &queryResult)
+	queryResult, err := r.getRolesByNamesFromManager(names)
 	if err != nil {
 		return nil, err
 	}
@@ -71,4 +80,26 @@ func (r *RolesRepository) GetRolesByNames(names []string) ([]model.Role, error) 
 	}
 
 	return append(cacheResult, queryResult...), nil
+}
+
+func (r *RolesRepository) getRolesByNamesFromManager(names []string) ([]model.Role, error) {
+	req, err := http.NewRequest("GET", r.Cfg.ManagerUrl+"/roles", nil)
+	if err != nil {
+		return nil, err
+	}
+	q := req.URL.Query()
+	q.Add("roles", strings.Join(names, ","))
+	req.URL.RawQuery = q.Encode()
+
+	client := &http.Client{Timeout: 10 * time.Second}
+	res, err := client.Do(req)
+	if err != nil {
+		return nil, err
+	}
+	var roles []model.Role
+	err = json.NewDecoder(res.Body).Decode(&roles)
+	if err != nil {
+		return nil, err
+	}
+	return roles, nil
 }

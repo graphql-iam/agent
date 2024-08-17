@@ -10,10 +10,18 @@ import (
 type Config struct {
 	Port         int          `yaml:"port"`
 	Path         string       `yaml:"path"`
+	ManagerUrl   string       `yaml:"managerUrl"`
 	SourceUrl    string       `yaml:"sourceUrl"`
 	MongoUrl     string       `yaml:"mongoUrl"`
 	Auth         AuthOptions  `yaml:"auth"`
 	CacheOptions CacheOptions `yaml:"cacheOptions"`
+	CorsOptions  CorsOptions  `yaml:"corsOptions"`
+}
+
+type CorsOptions struct {
+	AllowOrigins []string `yaml:"allowOrigins"`
+	AllowMethods []string `yaml:"allowMethods"`
+	AllowHeaders []string `yaml:"allowHeaders"`
 }
 
 type CacheOptions struct {
@@ -43,12 +51,15 @@ type JwtOptions struct {
 	MaxAgeSec     int64  `yaml:"maxAgeSec"`
 }
 
-func (c *Config) evaluateAndFillDefaults() error {
+func (c *Config) validateAndFillDefaults() error {
 	if c.Port <= 0 {
 		c.Port = 8080
 	}
 	if c.Path == "" {
 		c.Path = "/graphql"
+	}
+	if c.ManagerUrl == "" {
+		return errors.New("no managerUrl provided in config")
 	}
 	if c.SourceUrl == "" {
 		return errors.New("no sourceUrl provided in config")
@@ -59,18 +70,18 @@ func (c *Config) evaluateAndFillDefaults() error {
 	if c.Auth.Mode == "" {
 		return errors.New("no auth provided in config")
 	}
-	if err := c.CacheOptions.evaluateAndFillDefaults(); err != nil {
+	if err := c.CacheOptions.validateAndFillDefaults(); err != nil {
 		return err
 	}
 	switch c.Auth.Mode {
 	case "jwt":
-		err := c.Auth.JwtOptions.evaluateAndFillDefaults()
+		err := c.Auth.JwtOptions.validateAndFillDefaults()
 		if err != nil {
 			return err
 		}
 		break
 	case "header":
-		err := c.Auth.HeaderOptions.evaluateAndFillDefaults()
+		err := c.Auth.HeaderOptions.validateAndFillDefaults()
 		if err != nil {
 			return err
 		}
@@ -81,7 +92,7 @@ func (c *Config) evaluateAndFillDefaults() error {
 	return nil
 }
 
-func (c *JwtOptions) evaluateAndFillDefaults() error {
+func (c *JwtOptions) validateAndFillDefaults() error {
 	if c.JwksUrl == "" && c.Key == "" && c.KeyPath == "" {
 		return errors.New("none of key, keyPath, jwksUrl provided in config")
 	}
@@ -91,14 +102,14 @@ func (c *JwtOptions) evaluateAndFillDefaults() error {
 	return nil
 }
 
-func (c *HeaderOptions) evaluateAndFillDefaults() error {
+func (c *HeaderOptions) validateAndFillDefaults() error {
 	if c.Name == "" {
 		return errors.New("no header name provided in options")
 	}
 	return nil
 }
 
-func (c *CacheOptions) evaluateAndFillDefaults() error {
+func (c *CacheOptions) validateAndFillDefaults() error {
 	if c.Expiration <= 0 {
 		c.Expiration = 5
 	}
@@ -127,6 +138,6 @@ func GetConfig(path string) (Config, error) {
 		return res, err
 	}
 
-	err = res.evaluateAndFillDefaults()
+	err = res.validateAndFillDefaults()
 	return res, err
 }

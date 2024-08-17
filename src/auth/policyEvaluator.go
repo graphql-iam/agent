@@ -3,9 +3,9 @@ package auth
 import (
 	"fmt"
 	"github.com/gobwas/glob"
-	"github.com/lars250698/graphql-iam/src/logic"
-	"github.com/lars250698/graphql-iam/src/model"
-	"github.com/lars250698/graphql-iam/src/util"
+	"github.com/graphql-iam/agent/src/logic"
+	"github.com/graphql-iam/agent/src/model"
+	"github.com/graphql-iam/agent/src/util"
 	"net/http"
 )
 
@@ -19,7 +19,7 @@ type PolicyEvaluator struct {
 func (pe *PolicyEvaluator) EvaluateRoles(roles []model.Role) bool {
 	anyMatch := false
 	for _, role := range roles {
-		if pe.EvaluateRole(role) {
+		if pe.evaluateRole(role) {
 			anyMatch = true
 			break
 		}
@@ -27,9 +27,9 @@ func (pe *PolicyEvaluator) EvaluateRoles(roles []model.Role) bool {
 	return anyMatch
 }
 
-func (pe *PolicyEvaluator) EvaluateRole(role model.Role) bool {
+func (pe *PolicyEvaluator) evaluateRole(role model.Role) bool {
 	for _, policy := range role.Policies {
-		pass := pe.EvaluatePolicy(policy)
+		pass := pe.evaluatePolicy(policy)
 		if !pass {
 			return false
 		}
@@ -37,7 +37,7 @@ func (pe *PolicyEvaluator) EvaluateRole(role model.Role) bool {
 	return true
 }
 
-func (pe *PolicyEvaluator) EvaluatePolicy(policy model.Policy) bool {
+func (pe *PolicyEvaluator) evaluatePolicy(policy model.Policy) bool {
 	actionResourceMap, err := logic.Parse(pe.Query)
 	if err != nil {
 		return false
