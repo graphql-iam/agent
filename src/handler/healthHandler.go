@@ -5,6 +5,12 @@ import (
 	"net/http"
 )
 
-func Ping(c *gin.Context) {
+type HealthHandler struct{}
+
+func NewHealthHandler() HealthHandler {
+	return HealthHandler{}
+}
+
+func (h *HealthHandler) Ping(c *gin.Context) {
 	c.Status(http.StatusOK)
 }

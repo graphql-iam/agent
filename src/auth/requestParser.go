@@ -1,4 +1,4 @@
-package logic
+package auth
 
 import (
 	"errors"
@@ -8,7 +8,7 @@ import (
 	"log"
 )
 
-func Parse(requestBody string) (map[string][]string, error) {
+func parseRequest(requestBody string) (map[string][]string, error) {
 	fieldMap := make(map[string][]string)
 
 	src := source.NewSource(&source.Source{

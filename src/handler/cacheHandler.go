@@ -8,7 +8,11 @@ import (
 )
 
 type CacheHandler struct {
-	Cache *cache.Cache
+	cache *cache.Cache
+}
+
+func NewCacheHandler(cache *cache.Cache) *CacheHandler {
+	return &CacheHandler{cache: cache}
 }
 
 type invalidateRequestBody struct {
@@ -24,11 +28,11 @@ func (c *CacheHandler) Invalidate(context *gin.Context) {
 		context.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
-	c.Cache.Delete(body.Role)
+	c.cache.Delete(body.Role)
 	context.Status(http.StatusOK)
 }
 
 func (c *CacheHandler) Purge(context *gin.Context) {
-	c.Cache.Flush()
+	c.cache.Flush()
 	context.Status(http.StatusOK)
 }

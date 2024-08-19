@@ -51,6 +51,23 @@ type JwtOptions struct {
 	MaxAgeSec     int64  `yaml:"maxAgeSec"`
 }
 
+const ConfigPathEnvName = "AGENT_CONFIG_PATH"
+
+func NewConfig() Config {
+	configPath := "./config.yaml"
+
+	if os.Getenv(ConfigPathEnvName) != "" {
+		configPath = os.Getenv(ConfigPathEnvName)
+	}
+
+	cfg, err := getConfig(configPath)
+	if err != nil {
+		panic(err)
+	}
+
+	return cfg
+}
+
 func (c *Config) validateAndFillDefaults() error {
 	if c.Port <= 0 {
 		c.Port = 8080
@@ -119,7 +136,7 @@ func (c *CacheOptions) validateAndFillDefaults() error {
 	return nil
 }
 
-func GetConfig(path string) (Config, error) {
+func getConfig(path string) (Config, error) {
 	var res Config
 
 	file, err := os.Open(path)

@@ -3,7 +3,6 @@ package auth
 import (
 	"fmt"
 	"github.com/gobwas/glob"
-	"github.com/graphql-iam/agent/src/logic"
 	"github.com/graphql-iam/agent/src/model"
 	"github.com/graphql-iam/agent/src/util"
 	"net/http"
@@ -38,7 +37,7 @@ func (pe *PolicyEvaluator) evaluateRole(role model.Role) bool {
 }
 
 func (pe *PolicyEvaluator) evaluatePolicy(policy model.Policy) bool {
-	actionResourceMap, err := logic.Parse(pe.Query)
+	actionResourceMap, err := parseRequest(pe.Query)
 	if err != nil {
 		return false
 	}

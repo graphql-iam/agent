@@ -8,16 +8,24 @@ import (
 	"github.com/patrickmn/go-cache"
 	"net/http"
 	"strings"
-	"time"
 )
 
 type RolesRepository struct {
-	Cfg   config.Config
-	Cache *cache.Cache
+	cfg        config.Config
+	cache      *cache.Cache
+	httpClient http.Client
+}
+
+func NewRolesRepository(cfg config.Config, c *cache.Cache, httpClient http.Client) *RolesRepository {
+	return &RolesRepository{
+		cfg:        cfg,
+		cache:      c,
+		httpClient: httpClient,
+	}
 }
 
 func (r *RolesRepository) GetRoleByName(name string) (model.Role, error) {
-	res, found := r.Cache.Get(name)
+	res, found := r.cache.Get(name)
 	if found {
 		return res.(model.Role), nil
 	}
@@ -27,12 +35,12 @@ func (r *RolesRepository) GetRoleByName(name string) (model.Role, error) {
 		return model.Role{}, err
 	}
 
-	r.Cache.Set(name, result, cache.DefaultExpiration)
+	r.cache.Set(name, result, cache.DefaultExpiration)
 	return result, nil
 }
 
 func (r *RolesRepository) getRoleByNameFromManager(name string) (model.Role, error) {
-	req, err := http.NewRequest("GET", r.Cfg.ManagerUrl+"/role", nil)
+	req, err := http.NewRequest("GET", r.cfg.ManagerUrl+"/role", nil)
 	if err != nil {
 		return model.Role{}, err
 	}
@@ -40,8 +48,7 @@ func (r *RolesRepository) getRoleByNameFromManager(name string) (model.Role, err
 	q.Add("role", name)
 	req.URL.RawQuery = q.Encode()
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	res, err := client.Do(req)
+	res, err := r.httpClient.Do(req)
 	if err != nil {
 		return model.Role{}, err
 	}
@@ -58,7 +65,7 @@ func (r *RolesRepository) GetRolesByNames(names []string) ([]model.Role, error) 
 	unresolvedNames := names
 
 	for _, name := range names {
-		res, found := r.Cache.Get(name)
+		res, found := r.cache.Get(name)
 		if found {
 			cacheResult = append(cacheResult, res.(model.Role))
 			unresolvedNames = util.FilterArray(unresolvedNames, func(s string) bool {
@@ -76,14 +83,14 @@ func (r *RolesRepository) GetRolesByNames(names []string) ([]model.Role, error) 
 	}
 
 	for _, role := range queryResult {
-		r.Cache.Set(role.Name, role, cache.DefaultExpiration)
+		r.cache.Set(role.Name, role, cache.DefaultExpiration)
 	}
 
 	return append(cacheResult, queryResult...), nil
 }
 
 func (r *RolesRepository) getRolesByNamesFromManager(names []string) ([]model.Role, error) {
-	req, err := http.NewRequest("GET", r.Cfg.ManagerUrl+"/roles", nil)
+	req, err := http.NewRequest("GET", r.cfg.ManagerUrl+"/roles", nil)
 	if err != nil {
 		return nil, err
 	}
@@ -91,8 +98,7 @@ func (r *RolesRepository) getRolesByNamesFromManager(names []string) ([]model.Ro
 	q.Add("roles", strings.Join(names, ","))
 	req.URL.RawQuery = q.Encode()
 
-	client := &http.Client{Timeout: 10 * time.Second}
-	res, err := client.Do(req)
+	res, err := r.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}

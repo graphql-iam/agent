@@ -5,22 +5,27 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/gin-gonic/gin"
-	"github.com/graphql-iam/agent/src/auth"
 	"github.com/graphql-iam/agent/src/config"
-	"github.com/graphql-iam/agent/src/repository"
-	"github.com/lestrrat-go/jwx/v2/jwk"
-	"go.mongodb.org/mongo-driver/mongo"
+	"github.com/graphql-iam/agent/src/service"
 	"io"
 	"log"
 	"net/http"
+	"strings"
 	"time"
 )
 
 type PolicyProxy struct {
-	DB              *mongo.Database
-	Cfg             config.Config
-	KeySet          *jwk.Set
-	RolesRepository *repository.RolesRepository
+	cfg         config.Config
+	jwtService  *service.JwtService
+	authService *service.AuthService
+}
+
+func NewPolicyProxy(cfg config.Config, jwtService *service.JwtService, authService *service.AuthService) PolicyProxy {
+	return PolicyProxy{
+		cfg:         cfg,
+		jwtService:  jwtService,
+		authService: authService,
+	}
 }
 
 type policyProxyPostData struct {
@@ -39,36 +44,27 @@ func (p *PolicyProxy) Handler(context *gin.Context) {
 	err = json.Unmarshal(jsonBytes, &data)
 	if err != nil {
 		fmt.Println(err.Error())
-		context.AbortWithStatus(400)
+		context.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	rolesResolver := auth.RolesResolver{
-		Cfg:    p.Cfg,
-		KeySet: p.KeySet,
-	}
-
-	rolesStr, err := rolesResolver.Resolve(context)
+	rolesStr, err := p.resolveRoles(context)
 	if err != nil {
-		fmt.Println(err.Error())
-		context.AbortWithStatus(401)
-		return
-	}
-	roles, err := p.RolesRepository.GetRolesByNames(rolesStr)
-	if err != nil {
-		fmt.Println(err.Error())
-		context.AbortWithStatus(401)
+		fmt.Printf("Error resolving roles: %v\n", err.Error())
+		context.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
-	pe := auth.PolicyEvaluator{
-		Request:   *context.Request,
-		Variables: data.Variables,
-		Query:     data.Query,
+	authorized, err := p.authService.AuthorizeWithRoles(rolesStr, *context.Request, data.Variables, data.Query)
+	if err != nil {
+		log.Printf("request was denied with error: %v\n", err)
+		context.AbortWithStatus(http.StatusUnauthorized)
+		return
 	}
-	if !pe.EvaluateRoles(roles) {
+
+	if !authorized {
 		log.Println("Request was denied")
-		context.AbortWithStatus(401)
+		context.AbortWithStatus(http.StatusBadRequest)
 		return
 	}
 
@@ -76,7 +72,7 @@ func (p *PolicyProxy) Handler(context *gin.Context) {
 }
 
 func (p *PolicyProxy) proxyRequest(context *gin.Context, data []byte) {
-	proxyRequest, err := http.NewRequest("POST", p.Cfg.SourceUrl, bytes.NewBuffer(data))
+	proxyRequest, err := http.NewRequest("POST", p.cfg.SourceUrl, bytes.NewBuffer(data))
 	if err != nil {
 		context.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to create request"})
 		return
@@ -109,4 +105,41 @@ func (p *PolicyProxy) proxyRequest(context *gin.Context, data []byte) {
 	}
 
 	context.Data(proxyResponse.StatusCode, proxyResponse.Header.Get("Content-Type"), proxyResponseBody)
+}
+
+func (p *PolicyProxy) resolveRoles(context *gin.Context) ([]string, error) {
+	switch p.cfg.Auth.Mode {
+	case "jwt":
+		return p.resolveRolesFromJwt(context)
+	case "header":
+		return p.resolveRolesFromHeader(context)
+	}
+	return nil, fmt.Errorf("mode %s is not p valid auth mode", p.cfg.Auth.Mode)
+}
+
+func (p *PolicyProxy) resolveRolesFromJwt(context *gin.Context) ([]string, error) {
+	token, err := p.jwtService.Parse(context.GetHeader("Authorization"))
+	if err != nil {
+		return nil, err
+	}
+
+	rolesInterface, exists := token.Get(p.cfg.Auth.JwtOptions.RoleClaim)
+	if !exists {
+		return nil, err
+	}
+
+	rolesString, ok := rolesInterface.(string)
+	if !ok {
+		return nil, err
+	}
+
+	return strings.Split(rolesString, ","), nil
+}
+
+func (p *PolicyProxy) resolveRolesFromHeader(context *gin.Context) ([]string, error) {
+	headerVal := context.GetHeader(p.cfg.Auth.HeaderOptions.Name)
+	if headerVal == "" {
+		return nil, fmt.Errorf("header %s has no value", p.cfg.Auth.HeaderOptions.Name)
+	}
+	return strings.Split(headerVal, ","), nil
 }
